@@ -3,9 +3,10 @@ import enum
 
 class Player():
 
-	def __init__(self, is_human, color):
+	def __init__(self, is_human, color, name):
 		self.is_human = is_human
 		self.color = color
+		self.name = name
 
 
 class Move():

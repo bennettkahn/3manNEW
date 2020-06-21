@@ -119,7 +119,7 @@ class Gui:
 		#pygame.draw.rect (surf, (255, 0, 0), (*origin, *rotated_image.get_size()),2)
 
 	def draw(self, board: cb.Board):
-		self.screen.fill((255,255,255))
+		self.screen.fill((173,216,230))
 		# we are always positioning our board at (350, 50)
 		self.screen.blit(self.board_img, (350, 50))
 		
@@ -133,8 +133,6 @@ class Gui:
 				if p != None and p.killed == False:
 					ring = board.board[i][j].ring
 					pos = board.board[i][j].pos
-					
-
 					if p.color == 'w':
 						if p.piece_tag == 'k':
 							img = self.white_king
@@ -245,7 +243,7 @@ class Gui:
 			return pos
 		return None
 
-	def player_move(self, board: cb.Board, player: p.Player, start_ring: int, start_pos: int, end_ring: int, end_pos: int):
+	def player_move(self, board: cb.Board, player: p.Player, start_ring: int, start_pos: int, end_ring: int, end_pos: int, is_check_before: bool):
 		print("in player move")
 		# get Spot the Player is starting at
 		start_spot = board.get_space(start_ring, start_pos)
@@ -253,9 +251,9 @@ class Gui:
 		end_spot = board.get_space(end_ring, end_pos)
 		# create Move object for Player's turn, passing in start and end Spots we determined
 		move = p.Move(player, start_spot, end_spot)
-		return self.attempt_move(board, move, player)
+		return self.attempt_move(board, move, player, is_check_before)
 
-	def attempt_move(self, board: cb.Board, move: p.Move, player: p.Player) -> bool:
+	def attempt_move(self, board: cb.Board, move: p.Move, player: p.Player, is_check_before: bool) -> bool:
 		print("in attempt move")
 		# Piece being moved
 		move_piece = move.start.Piece
@@ -272,16 +270,6 @@ class Gui:
 		# check if piece is moving accross a moat that is not bridged
 		#if (move.start >= 0 and move.start <= 7) and (move.end >= 7 )
 		
-		# see if the Player's King is in check before executing their move
-		check_before_move = False
-		# this will get us the Spot of the current Player's King
-		curr_king_spot = board.get_spot_of_piece(player.color, 'k')
-		# if the Player's King is in check
-		if (curr_king_spot.is_check(board)):
-			print("Your King is in Check! Move him!!!!")
-			check_before_move = True
-		
-
 		# check if the Player's attempted move is not valid
 		if (not(move_piece.valid_move(board, move.start, move.end))):
 			print("returning false because not a valid move")
@@ -300,24 +288,23 @@ class Gui:
 		# this will get us the Spot of the current Player's King
 		curr_king_spot = board.get_spot_of_piece(player.color, 'k')
 		# if the Player's King is in check
-		if (curr_king_spot.is_check(board)):
+		if (curr_king_spot.is_check(board, player.color) != False):
 			check_after_move = True
 
 		# if the Player was in check before their move AND after their move, they cannot make that move
 		# this is assuming that Player is not in checkmate and has a valid move that will get them out of checkmate
-		if (check_before_move) and (check_after_move):
+		if (is_check_before) and (check_after_move):
 			# move piece back
 			board.board[move.end.ring][move.end.pos].Piece = None
 			board.board[move.start.ring][move.start.pos].Piece = move_piece
 			print("returning false because you did not move yourself out of check")
 			return False
-		if ((not(check_before_move) and (check_after_move))):
+		if ((not(is_check_before) and (check_after_move))):
 			board.board[move.end.ring][move.end.pos].Piece = None
 			board.board[move.start.ring][move.start.pos].Piece = move_piece
 			print("returning false because you just moved yourself into check")
 			return False
 	
-
 		board.board[move.end.ring][move.end.pos].Piece = None
 		board.board[move.start.ring][move.start.pos].Piece = move_piece
 		# Piece at move_piece's ending Spot (assuming move is valid)
@@ -331,7 +318,7 @@ class Gui:
 		return True
 
 
-	def get_user_input(self, board: cb.Board, curr_player: p.Player):
+	def get_user_input(self, board: cb.Board, curr_player: p.Player, is_check_before: bool):
 		from_spot_chosen = False
 		to_spot_chosen = False
 		running = True
@@ -376,7 +363,7 @@ class Gui:
 					spot_to = board.get_space(to_spot_list[0], to_spot_list[1])
 
 					clicked_to_piece = board.get_space(to_spot_list[0], to_spot_list[1]).Piece
-					if self.player_move(board, curr_player, from_spot_list[0], from_spot_list[1], to_spot_list[0], to_spot_list[1]):
+					if self.player_move(board, curr_player, from_spot_list[0], from_spot_list[1], to_spot_list[0], to_spot_list[1], is_check_before):
 						to_spot_chosen = True
 						board.get_space(to_spot_list[0], to_spot_list[1]).Piece = clicked_from_piece
 						board.get_space(from_spot_list[0], from_spot_list[1]).Piece = None
@@ -387,14 +374,6 @@ class Gui:
 			#pygame.display.update()
 
 		return (spot_from, spot_to)
-
-
-
-
-			
-
-
-
 
 if __name__ == "__main__":
 	B = Gui()
