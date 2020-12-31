@@ -19,8 +19,10 @@ class Board:
 	Methods
 	-------
 	* get_space(x, y):
+			# returns piece occupying the space
 	* set_board()
-	*
+			# initializes all spaces of board
+
 	"""
 
 
@@ -171,21 +173,33 @@ class Board:
 			
 		if (x == check):
 			crossed = not(crossed)
+<<<<<<< HEAD
 			if for_back == "for":
 				x = x_to
+=======
+			x = x_to
+			if for_back == "for":
+>>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
 				if left_right == "right":
 					y = (y - 10) % 24
 				else: 
 					y = (y + 10) % 24
 			else: 
+<<<<<<< HEAD
 				return [self.get_space(x,y)]
+=======
+				y = (y + horiz_shift) % 24
+>>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
 		else:
 			x += vert_shift
 			y = (y + horiz_shift) % 24
 	
 		while (x != start_ring or y != start_pos):
+<<<<<<< HEAD
 			if for_back == 'back' and x == check:
 				break
+=======
+>>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
 			#print(x, y)
 			spots.append(self.get_space(x, y))
 			y = (y + horiz_shift) % 24
@@ -434,6 +448,7 @@ class Spot:
 
 		# traverse right until arriving at a Spot occupied by a Piece
 		while (board.get_space(x, y).Piece == None):
+<<<<<<< HEAD
 			# in some cases, the King may be the only Piece on a given ring
 			# we need to break upon returning to end Spot to avoid an infinite loop 
 			if y == self.pos:
@@ -442,6 +457,11 @@ class Spot:
 			horiz_right_count += 1
 			y = (y + 1) % 24
 
+=======
+			spots.append(board.get_space(x, y))
+			horiz_right_count += 1
+			y = (y + 1) % 24
+>>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
 			
 		spots.append(board.get_space(x,y))
 		threats.append([board.get_space(x,y), "horizontal", horiz_right_count, spots])
@@ -458,8 +478,11 @@ class Spot:
 
 		# traverse left until arriving at a spot occupied by a Piece
 		while (board.get_space(x, y).Piece == None):
+<<<<<<< HEAD
 			if y == self.pos:
 				break
+=======
+>>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
 			spots.append(board.get_space(x, y))
 			horiz_left_count += 1
 			y = (y - 1) % 24
