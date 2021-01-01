@@ -45,6 +45,8 @@ class Game():
 			curr_king_spot = self.board.get_spot_of_piece(self.current_turn.color, 'k')
 			c = curr_king_spot.is_check(self.board, self.current_turn.color)
 			# if the Player's King is in check
+			# recall that c = is_check() returns a list of threats if there are threats
+			# in Python, lists evaluate to True
 			if c:
 				print("Your King is in Check! Move him!!!!")
 				check_before_move = True
@@ -74,9 +76,11 @@ class Game():
 
 
 	def is_checkmate(self, curr_king_spot, curr_threats):
+		# see if any of the spots the King can move to are safe
 		for end_spot in curr_king_spot.Piece.possible_moves(self.board):
-			print(end_spot.ring, end_spot.pos)
 			if end_spot.is_check(self.board, self.current_turn.color) == False:
+				print("You can move your King to (%d, %d) in order to save him" % (end_spot.ring, end_spot.pos))
+				print("You also may be able to block the path")
 				return False
 		num_threats = len(curr_threats)
 		same_color_pieces = []
@@ -85,6 +89,7 @@ class Game():
 				if self.board.board[i][j].Piece != None:
 					if self.board.board[i][j].Piece.color == self.current_turn.color:
 						same_color_pieces.append(self.board.board[i][j].Piece)
+		can_block_check = False
 		for threat in curr_threats:
 			print(threat)
 			for spot in threat[3]:
@@ -93,9 +98,9 @@ class Game():
 					if piece.piece_tag != 'k':
 						if spot in piece.possible_moves(self.board):
 							print("You can move your %s to Spot (%d, %d) in order to save your king!" % (piece.piece_tag, spot.ring, spot.pos))
-							return False
+							can_block_check = True
 
-		return True
+		return not(can_block_check)
 
 
 main_game = Game()

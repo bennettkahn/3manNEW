@@ -8,21 +8,22 @@ class Board:
 
 	Attributes
 	----------
-	* board:  
-			# our chess board is stored as a list with 6 sublists
-			# each sublist represents an 'ring' of the board, with the first being the outermost ring
-			# each sublist has 24 elements, each representing a spot on the board
-			# Spot with NoneType piece indicates to piece in that spot
-			# an occupied spot will have a Spot class object at its respective spot
+	board: list
+			our chess board is stored as a list with 6 sublists
+			each sublist represents an 'ring' of the board, with the first being the outermost ring
+			each sublist has 24 elements, each representing a spot on the board
+			Spot with NoneType piece indicates to piece in that spot
+			an occupied spot will have a Spot class object at its respective spot
 
 
 	Methods
 	-------
-	* get_space(x, y):
-			# returns piece occupying the space
-	* set_board()
-			# initializes all spaces of board
-
+	get_space(x, y)
+	set_board()
+	get_spot_of_piece(self, color: str, piece_tag: str) -> str
+	diagonal_traverse(self, start_ring, start_pos, left_right: str, for_back: str)
+	is_clear_path(self, start, end) -> bool
+	bridge_moats_check(self)
 	"""
 
 
@@ -39,12 +40,19 @@ class Board:
 
 	def get_space(self, x, y):
 		"""
+		Returns the Spot object at the given coordinates
+
 		Parameters
 		----------
 		x: int (0, 5)
 			The 'ring' of the circle; ring 0 being the outermost ring of the circle, ring 5 being the innermost
 		y: int (0,23)
 			The space along the circular board; begins with 0, the leftmost white pieces, and ends with 23, the rightmost gray piece
+		
+		Returns
+		-------
+		self.board[x][y] -> the Spot at the given coordinates
+
 		"""
 
 		try:
@@ -54,7 +62,10 @@ class Board:
 
 
 	def set_board(self):
-		""" Sets the board with all pieces to starting position."""
+		""" 
+		Sets the board with all pieces to starting position.
+
+		"""
 
 		# initialize all white pieces
 		self.board[0][0] = Spot(0, 0, Rook('w', 'r'))
@@ -124,7 +135,20 @@ class Board:
 
 
 	def get_spot_of_piece(self, color: str, piece_tag: str) -> str:
-		''' Get what Spot a Piece is currently at '''
+		"""
+		Get what Spot a Piece is currently at
+		
+		Parameters
+		----------
+		color: str ('w', 'g', 'b')
+			the color of the piece 
+		piece_tag: str 
+			the tag abbreviation of the piece		
+	
+		Returns
+		-------
+		self.get_space(i, j) -> the spot of the given Piece
+		"""
 
 		# if the color of the Piece being looked for is white, we start at position 0
 		if color == 'w': 
@@ -144,7 +168,147 @@ class Board:
 					if (self.get_space(i, j).Piece.color == color) and (self.get_space(i, j).Piece.piece_tag == piece_tag):
 						return self.get_space(i, j)
 
-	def diagonal_traverse(self, start_ring, start_pos, left_right: str, for_back: str):
+	def horizontal_traverse(self, start_ring: int, start_pos: int, left_right: str, end = None) -> list:
+		"""
+		Traverse the board diagonally from a given starting position until a) we reach an end position (if provided) or b) we reach the starting position
+		
+		Parameters
+		----------
+		start_ring: int [0, 5]
+			the ring of the starting Spot
+		start_pos: int [0, 23]
+			the position of the starting Spot
+		left_right: str ('left', 'right')
+			whether the traversal is left or right
+		end: Spot
+			the ending Spot
+			used when we are testing if a path from a starting Spot to an ending Spot is clear
+
+		Returns
+		-------
+		[bool, self.get_space(x,y).Piece/None, i, spots]
+			* bool -> if the bath is clear
+			* self.get_space(x,y).Piece/None -> the Piece on the Spot we end our traversal on
+			* i -> int, number of Spots crossed in traversal
+			* spots -> list, all of the Spots we traverse
+
+		"""
+
+		spots = []
+
+		if left_right == 'right':
+			horiz_shift = 1
+		else: 
+			horiz_shift = -1
+
+		x = start_ring
+		y = start_pos
+
+		i = 0
+
+		while ((x != start_ring or y != start_pos) or (i == 0)):
+			y = (y + horiz_shift) % 24
+			if end != None:
+				if self.get_space(x, y) == end:
+					break
+			spots.append(self.get_space(x,y))
+			i += 1
+			if (self.get_space(x,y).Piece != None) and (self.get_space(x,y) != self.get_space(start_ring, start_pos)):
+				# for our is_clear_path() method, we only need to know if there is a piece there; return enelement 0
+				# for is_check() method, we need to know the actual Piece--element 1
+				return [False, self.get_space(x,y).Piece, i, spots]
+		return [True, None, i, spots]
+
+	def vertical_traverse(self, start_ring: int, start_pos: int, for_back: str, end = None) -> list:
+		"""
+		Traverse the board diagonally from a given starting position until a) we reach an end position (if provided) or b) we reach the starting position
+		
+		Parameters
+		----------
+		start_ring: int [0, 5]
+			the ring of the starting Spot
+		start_pos: int [0, 23]
+			the position of the starting Spot
+		for_back: str ('for', 'back')
+			whether the traversal is left or right
+		end: Spot
+			the ending Spot
+			used when we are testing if a path from a starting Spot to an ending Spot is clear
+
+		Returns
+		-------
+		[bool, self.get_space(x,y).Piece/None, i, spots]
+			* bool -> if the bath is clear
+			* self.get_space(x,y).Piece/None -> the Piece on the Spot we end our traversal on
+			* i -> int, number of Spots crossed in traversal
+			* spots -> list, all of the Spots we traverse
+		"""
+
+		spots = []
+		# forwards
+		if for_back == 'for':
+			crossed = False
+		# backwards
+		else:
+			crossed = True
+
+		x = start_ring
+		y = start_pos
+
+		i = 0
+		# traversal loop
+		while (x != start_ring or y != start_pos) or (i == 0):
+			if (for_back == 'back' and x == 0) or (for_back == 'for' and x == 0 and y != start_pos):
+				break
+			# crossing the center
+			elif (x == 5) and (for_back == 'for') and (crossed == False):
+				x = 5
+				y = (y -12) % 24
+				crossed = True
+			else:
+				# if we have crossed the center in a forward movement or we are moving backwards, ring is decrementing
+				if crossed == True:
+					x -= 1
+				else:
+					x += 1
+			if end != None:
+				if self.get_space(x, y) == end:
+					break
+			spots.append(self.get_space(x,y))
+			i += 1
+			if (self.get_space(x,y).Piece != None) and (self.get_space(x,y) != self.get_space(start_ring, start_pos)):
+				return [False, self.get_space(x,y).Piece, i, spots]
+
+		return [True, None, i, spots]
+
+
+	def diagonal_traverse(self, start_ring: int, start_pos: int, left_right: str, for_back: str, end = None) -> list:
+		"""
+		Traverse the board diagonally from a given starting position until a) we reach an end position (if provided) or b) we reach the starting position
+
+		Parameters
+		----------
+		start_ring: int [0, 5]
+			the ring of the starting Spot
+		start_pos: int [0, 23]
+			the position of the starting Spot
+		left_right: str ('left', 'right')
+			whether the traversal is left or right
+		for_back: str ('for', 'back')
+			whether the traversal is forwards or backwards
+		end: Spot
+			the ending Spot
+			used when we are testing if a path from a starting Spot to an ending Spot is clear
+
+		Returns
+		-------
+		[bool, self.get_space(x,y).Piece/None, i, spots]
+			* bool -> if the bath is clear
+			* self.get_space(x,y).Piece/None -> the Piece on the Spot we end our traversal on
+			* i -> int, number of Spots crossed in traversal
+			* spots -> list, all of the Spots we traverse
+
+		"""
 		# list to store all pieces along diagonal in
 		# element 0 is start spot, element 1 is the spot along the forward/backward right/left
 			# diagonal (dependent on the arguments passed)
@@ -152,82 +316,72 @@ class Board:
 		if left_right == 'right':
 			# a rignt diagonal move increases the position around the circle by one
 			horiz_shift = 1
+		# left
 		else:
 			# a left diagonal move decreases the position around the circle by one
 			horiz_shift = -1
 		if for_back == 'for':
-			vert_shift = 1
 			# check to see if ring is at this to see if we have crossed center
-			check = 5
-			x_to = 5
 			crossed = False
+		# backwards
 		else: 
-			vert_shift = -1
-			check = 0
-			x_to = 1
-			crossed = False
+			crossed = True
 
 		x = start_ring
 		y = start_pos
-		
-			
-		if (x == check):
-			crossed = not(crossed)
-<<<<<<< HEAD
-			if for_back == "for":
-				x = x_to
-=======
-			x = x_to
-			if for_back == "for":
->>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
-				if left_right == "right":
-					y = (y - 10) % 24
-				else: 
-					y = (y + 10) % 24
-			else: 
-<<<<<<< HEAD
-				return [self.get_space(x,y)]
-=======
-				y = (y + horiz_shift) % 24
->>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
-		else:
-			x += vert_shift
-			y = (y + horiz_shift) % 24
-	
-		while (x != start_ring or y != start_pos):
-<<<<<<< HEAD
-			if for_back == 'back' and x == check:
+
+		# a dummy variable because we want loop to enter
+		i = 0
+		print(left_right)
+		while (x != start_ring or y != start_pos) or (i == 0):
+			# WE CANNOT BOUNCE OFF THE OUTSIDE OF THE BOARD
+			# break loop if we get to end
+			if (for_back == 'back' and x == 0) or (for_back == 'for' and x == 0 and start_ring != 0):
 				break
-=======
->>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
-			#print(x, y)
-			spots.append(self.get_space(x, y))
-			y = (y + horiz_shift) % 24
-			if crossed == False:
-				#print("in crossed is false")
-				x += vert_shift
-			else:
-				#print("in crossed is true")
-				x += -1*vert_shift
-			# at end of board
-			if (x == -1):
-				#print("x is -1")
-				x = 1
-				crossed = not(crossed)
-			# crossing center
-			if (x == 6):
-				x = 5 
-				# the two cases in which we shift 10 to the LEFT for a diag move through center
+			
+			elif for_back == 'for' and (x == 5) and crossed == False:
+				x = 5
 				if (left_right == "right" and for_back == "for") or (left_right == "right" and for_back == "back"):
-					y = (y - 11) % 24
-				else: 
-					y = (y + 11) % 24
-				crossed = not(crossed)
-		spots.append(self.get_space(x,y))
-		return spots
+					y = (y - 10) % 24
+				else:
+					y = (y + 10) % 24
+				crossed = True
+
+			else:
+				y = (y + horiz_shift) % 24
+				if crossed == False:
+					x += 1
+				else:
+					x += -1
+			if end != None:
+				if self.get_space(x, y) == end:
+					break
+			print(x, y)
+			spots.append(self.get_space(x,y))
+			i += 1
+			if (self.get_space(x,y).Piece != None) and (self.get_space(x,y) != self.get_space(start_ring, start_pos)):
+				return [False, self.get_space(x,y).Piece, i, spots]
+
+		print("FINISHED TRAVERSING")
+		return [True, None, i, spots]
 
 	
 	def is_clear_path(self, start, end) -> bool:
+		"""
+		* Checks if there is a clear path for a valid attempted Move
+		* A clear path is one where there are no Pieces in the way
+
+		Parameters
+		----------
+		start: Spot
+			the starting Spot of the Move
+		end: Spot
+			the ending Spot of the Move
+
+		Returns
+		-------
+		bool -> True if there is a clear path, False otherwise
+		"""
 		piece = start.Piece 
 		# if the piece being moved is a Knight, we are not concerned about a path
 		if (isinstance(piece, Knight)):
@@ -253,140 +407,72 @@ class Board:
 		# we are looking at a HORIZONTAL MOVEMENT!!!!
 			# a horizontal move could also be a diagonal move, so we have to check for that
 		if (pos_change != 0) and (ring_change == 0) and (diag_move == False):
-			# we have to check both ways for a horizontal movement
-			horiz_right = True
-			horiz_left = True
+			print("IN HZ MOVEMENT")
 			# CHECK FOR CLEAR PATH GOING RIGHT
-
-			# record starting location
-			x = start.ring
-			y = ((start.pos) + 1) % 24
-			# traverse right until arriving at end Spot
-			while (y != end.pos):
-				# if we encounter a spot with a Piece on it, return False
-				if (self.get_space(x,y).Piece != None):
-					horiz_right = False
-				y = (y + 1) % 24
+			horiz_right = (self.horizontal_traverse(start.ring, start.pos, 'right', end))[0]
 			# CHECK FOR CLEAR PATH GOING LEFT
-
-			# record starting location
-			x = start.ring
-			y = ((start.pos) - 1) % 24
-			# traverse right until arriving at end Spot
-			while (y != end.pos):
-				if (self.get_space(x,y).Piece != None):
-					horiz_left = False
-				y = (y - 1) % 24
-			# if neither the path is clear, return false
+			horiz_left = (self.horizontal_traverse(start.ring, start.pos, 'left', end))[0]
+			# if neither path is clear, return false
 			if (horiz_right == False) and (horiz_left == False):
 				return False
 
 		# we are looking at a VERTICAL MOVEMENT!!!!!
-		if (pos_change == 0 or pos_change == 12):
+		elif (pos_change == 0 or pos_change == 12):
+			print("IN VERTICAL MOVEMENT")
 			# move is one unit through center (starts and ends on ring 5)
 			if start.ring == 5 and ring_change == 0:
 				return True
-		
-			x = start.ring
-			y = start.pos
 			# vertical movement FORWARD
 			if (ring_change >= 0) or (pos_change == 12):
-				crossed_center = False
-				if (x == 5):
-					x = 5
-					y = (y - 12) % 24
-					crossed_center = True
-				if not(crossed_center):
-					x += 1
-				else:
-					x -= 1
+				return (self.vertical_traverse(start.ring, start.pos, 'for', end))[0]
 				
-				while (x != end.ring or y != end.pos):
-					if (self.get_space(x,y).Piece != None):
-						return False
-					if not(crossed_center):
-						x += 1
-					else:
-						x -= 1
-					if (x == 6):
-						x = 5
-						y = (y - 12) % 24
-						crossed_center = True
 			# vertical movement BACKWARDS
 			else:
-				x -= 1
-				while (x != end.ring):
-					if (self.get_space(x,y).Piece != None):
-						return False
-					x -= 1
-					if (x == -1):
-						break
+				return (self.vertical_traverse(start.ring, start.pos, 'back', end))[0]
 
 		# if both of these are not 0, we are looking at a DIAGONAL MOVEMENT
-		if (diag_move == True):
-			# PIECE MOVES ALONG ITS FORWARD RIGHT/BACKWARDS LEFT DIAGONAL
-			print('for right back left')
-			forward_right = True
-			backwards_left = True
+		elif (diag_move == True):
+			print("IN DIAGONAL MOVE")
+			# a backwards diagonal move
+			if (ring_change < 0):
+				print('in back')
+				backwards = True
+				# backwards left diagonal move
+				if (pos_change > 12):
+					return (self.diagonal_traverse(start.ring, start.pos, 'left', 'back', end))[0]
+				# a backwards right diagonal move
+				else:
+					return (self.diagonal_traverse(start.ring, start.pos, 'right', 'back', end))[0]
+			# a forward diagonal move
+			else:
+				print('in for')
+				forward_right = True
+				forward_left = True
+				forward_right = (self.diagonal_traverse(start.ring, start.pos, 'right', 'for', end))[0]
+				forward_left = (self.diagonal_traverse(start.ring, start.pos, 'left', 'for', end))[0]
+				# remember that for forward digaonal moves, left and right are both possibilities
+				if forward_right or forward_left: 
+					return True
 
-			l = self.diagonal_traverse(start.ring, start.pos, 'right', 'for')
-			for s in l:
-				print(s.ring, s.pos)
-				# if we get to our end Spot, break
-				if s == end:
-					break
-				if (s.Piece != None):
-					forward_right = False
-			if forward_right: 
-				return True
-
-			l = self.diagonal_traverse(start.ring, start.pos, 'left', 'back')
-			for s in l:
-				print(s.ring, s.pos)
-				# if we get to our end Spot, break
-				if s == end:
-					break
-				if (s.Piece != None):
-					backwards_left = False
-			if backwards_left:
-				return True
-
-
-
-			# PIECE MOVES ALONG ITS FORWARD LEFT/BACKWARDS RIGHT DIAGONAL
-			print('for left back right')
-			forward_left = True
-			backwards_right = True
-
-			l = self.diagonal_traverse(start.ring, start.pos, 'left', 'for')
-			for s in l:
-				# if we get to our end Spot, break
-				if s == end:
-					break
-				if (s.Piece != None):
-					forward_left = False
-			if forward_left:
-				return True
-
-			l = self.diagonal_traverse(start.ring, start.pos, 'right', 'back')
-			for s in l:
-				# if we get to our end Spot, break
-				if s == end:
-					break
-				if (s.Piece != None):
-					backwards_right = False
-			if backwards_right:
-				return True
-			
+		
 			# if none of the diagonal moves were valid, return False
 			return False
 
 		# if the path is clear, return true...
 		return True
 
-	
-	
 	def bridge_moats_check(self):
+		"""
+		Check if any boats need to be bridged (i.e.) all Pieces of a color are off back rank
+
+		Parameters
+		----------
+		None
+		
+		Returns
+		-------
+		None
+		"""
 		# temporarily set each moat to be bridged
 		# if any Piece remains in color's back rank, we re-establish moat
 		white_count = 0
@@ -421,12 +507,47 @@ class Board:
 
 
 class Spot:
+	"""
+	A class to represent a spot on the chess board
+
+	***
+
+	Attributes
+	----------
+	ring: int
+		the ring (0 is outermost, 5 is innermost) of the Spot
+	pos: int
+		the position/column (0 is the first white Piece) of the Spot
+
+	Methods
+	-------
+	is_check()
+
+	"""
 	def __init__(self, ring, pos, Piece):
 		self.ring = ring
 		self.pos = pos
 		self.Piece = Piece
 
 	def is_check(self, board: Board, color: str) -> bool:
+		"""
+		Determines whether or not the King is in check at the Spot object the method is called on
+
+		Parameters
+		----------
+		board: Board
+			the Board we are playing on
+		color: str ('w', 'g', 'b')
+			the color of the current King we are checking to see if check
+
+		Returns
+		-------
+		bool -> True if check, Flase otherwise
+		"""
+		x = self.ring
+		y = self.pos
+
+		print("IN IS CHECK")
 
 		# below we begin the logic of whether or not a King is in check
 
@@ -436,197 +557,30 @@ class Spot:
 		threats = []
 
 		# get first piece to the horizontal right
+		l = board.horizontal_traverse(x, y, 'right')
+		threats.append([l[1], "horizontal", l[2], l[3]])
+		# horizontal left
+		l = board.horizontal_traverse(x, y, 'left')
+		threats.append([l[1], "horizontal", l[2], l[3]])
+		# vertical forward
+		l = board.vertical_traverse(x, y, 'for')
+		threats.append([l[1], "vertical", l[2], l[3]])
+		# vertical back
+		l = board.vertical_traverse(x, y, 'back')
+		threats.append([l[1], "vertical", l[2], l[3]])
+		# forward right diagonal
+		l = board.diagonal_traverse(x, y, 'right', 'for')
+		threats.append([l[1], "f-r-diagonal", l[2], l[3]])
+		# forward left diagonal
+		l = board.diagonal_traverse(x, y, 'left', 'for')
+		threats.append([l[1], "f-l-diagonal", l[2], l[3]])
+		# backwards right diagonal
+		l = board.diagonal_traverse(x, y, 'right', 'back')
+		threats.append([l[1], "b-r-diagonal", l[2], l[3]])
+		# backwards left diagonal
+		l = board.diagonal_traverse(x, y, 'left', 'back')
+		threats.append([l[1], "b-l-diagonal", l[2], l[3]])
 
-		# record starting location
-		x = self.ring
-		y = ((self.pos) + 1) % 24
-		# we will store all spots we encounter on traversal
-		# this will be used to see if one of these Spots can be blocked (i.e. block a checkmate)
-		spots = []
-		# tracker
-		horiz_right_count = 1
-
-		# traverse right until arriving at a Spot occupied by a Piece
-		while (board.get_space(x, y).Piece == None):
-<<<<<<< HEAD
-			# in some cases, the King may be the only Piece on a given ring
-			# we need to break upon returning to end Spot to avoid an infinite loop 
-			if y == self.pos:
-				break
-			spots.append(board.get_space(x, y))
-			horiz_right_count += 1
-			y = (y + 1) % 24
-
-=======
-			spots.append(board.get_space(x, y))
-			horiz_right_count += 1
-			y = (y + 1) % 24
->>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
-			
-		spots.append(board.get_space(x,y))
-		threats.append([board.get_space(x,y), "horizontal", horiz_right_count, spots])
-
-
-
-		# get first piece to the horizontal left
-
-		x = self.ring
-		y = (self.pos - 1) % 24
-		spots = []
-		# tracker
-		horiz_left_count = 1
-
-		# traverse left until arriving at a spot occupied by a Piece
-		while (board.get_space(x, y).Piece == None):
-<<<<<<< HEAD
-			if y == self.pos:
-				break
-=======
->>>>>>> fc225139ca0a96d09d9857e7c35b1376724a4a1b
-			spots.append(board.get_space(x, y))
-			horiz_left_count += 1
-			y = (y - 1) % 24
-		spots.append(board.get_space(x,y))
-		threats.append([board.get_space(x,y), "horizontal", horiz_left_count, spots])
-
-		# get first piece vertically in front
-
-
-		x = self.ring
-		y = self.pos
-		spots = []
-		# tracker
-		vert_front_count = 1
-		# boolean value to store whether or not our scanning algorithm has crossed the center
-		crossed_center = False
-		if (x == 6):
-			x = 5
-			y = (y - 12) % 24
-			crossed_center = True
-		if crossed_center == False:
-			x += 1
-		else:
-			x -= 1
-
-		# traverse forward until arriving at a spot occupied by a Piece
-		while (board.get_space(x, y).Piece == None):
-			spots.append(board.get_space(x, y))
-			vert_front_count += 1
-			if crossed_center == False:
-				x += 1
-			else:
-				x -= 1
-			# if we get to x = 6, wrap back to 5; add/subtract 12 from position
-			# this simulates motion through the center
-			if (x == 6):
-				x = 5
-				y = (y - 12) % 24
-				crossed_center = True
-			if (x == -1):
-				break
-		spots.append(board.get_space(x,y))
-		threats.append([board.get_space(x,y), "forward-vertical", vert_front_count, spots])
-
-		# get first piece vertically behind
-
-
-		x = self.ring
-		y = self.pos
-		spots = []
-		# tracker
-		vert_back_count = 1
-		x -= 1
-
-		# traverse backwards until arriving at a spot occupied by a Piece
-		while (board.get_space(x, y).Piece == None):
-			spots.append(board.get_space(x, y))
-			vert_back_count += 1
-			x -= 1
-			if (x == -1):
-				break
-		# sometimes, we get x = -1, this gives us reverse indexing in get_space() method, which we do not want
-		if x >= 0:
-			spots.append(board.get_space(x,y))
-			threats.append([board.get_space(x,y), "behind-vertical", vert_back_count, spots])
-
-		# get first piece to the forward, right diagonal
-
-		x = self.ring
-		y = self.pos
-		crossed_center = False
-
-		# track how many spaces we traverse for our forward right diagonal scan
-		# will be used if scan algorithm catches a Pawn because Pawns are only a threat
-		# if they are to the immediate forward diagonal of the King
-		forward_r_diag_count = 0
-		f_r_spot = self
-		l = board.diagonal_traverse(self.ring, self.pos, 'right', 'for')
-		spots = []
-		for s in l:
-			spots.append(s)
-			forward_r_diag_count += 1
-			if s.Piece != None:
-				f_r_spot = s
-				break
-
-		threats.append([f_r_spot, "f-r-diagonal", forward_r_diag_count, spots])	
-
-		# get first piece to the forward, left diagonal
-
-		x = self.ring
-		y = self.pos
-		crossed_center = False
-		spots = []
-
-		# same reasoning for tracker as above; this one for left forward diagonal
-		forward_l_diag_count = 0
-		f_l_spot = self
-		l = board.diagonal_traverse(self.ring, self.pos, 'left', 'for')
-		for s in l:
-			spots.append(s)
-			forward_l_diag_count += 1
-			if s.Piece != None:
-				f_l_spot = s
-				break
-
-		threats.append([f_l_spot, "f-l-diagonal", forward_l_diag_count, spots])
-
-
-		# get first piece to the backwards, right diagonal
-
-
-		x = self.ring
-		y = self.pos
-		spots = []
-		# tracker
-		back_right_count = 0
-		b_r_spot = self
-		l = board.diagonal_traverse(self.ring, self.pos, 'right', 'back')
-		for s in l:
-			spots.append(s)
-			back_right_count += 1
-			if s.Piece != None:
-				b_r_spot = s
-				break
-
-		threats.append([b_r_spot, "b-r-diagonal", back_right_count, spots])
-
-		# get first piece to the backwards, left diagonal
-		x = self.ring
-		y = self.pos
-		spots = []
-		# tracker
-		back_left_count = 0
-		b_l_spot = self
-		l = board.diagonal_traverse(self.ring, self.pos, 'left', 'back')
-		for s in l:
-			spots.append(s)
-			back_left_count += 1
-			if s.Piece != None:
-				b_l_spot = s
-				break
-
-		threats.append([b_l_spot, "b-l-diagonal", back_left_count, spots])
 
 		# there is one last Piece that we have to consider for having the King in checkmate
 		# this is the only Piece that cannot be identified by a directional linear scan from the King: a Knight
@@ -635,10 +589,6 @@ class Spot:
 
 		# a list to store all the Kinght potential Spots BEHIND the King
 		knights = []
-
-		x = self.ring
-		y = self.pos
-
 
 		# append all horse-shaped moves which end in a final Spot behind King's Spot
 
@@ -708,30 +658,31 @@ class Spot:
 		#print(threats)
 		real_threats = []
 		for t in threats:
-			if (t[0].Piece != None):
+			print(t[0])
+			if (t[0] != None):
 				print("Threatened by: " + t[1])
-				print(t[0].Piece.color)
-				print(t[0].Piece.piece_tag)
+				print(t[0].color)
+				print(t[0].piece_tag)
 				print()
-				if (t[0].Piece.color != color):
-					if isinstance(t[0].Piece, King):
+				if (t[0].color != color):
+					if isinstance(t[0], King):
 						# if the threatening Piece is a King 1 unit away, we cannot move our king there (regardless of direction)
 						if (t[2] == 1):
 							real_threats.append(t)
-					elif isinstance(t[0].Piece, Pawn):
+					elif isinstance(t[0], Pawn):
 						# Pawns along the King's forward diagonal cuase Check iff they are to the immediate diagonal
 						# below conditional variables tracked how far many units our traversal moved
 						if (t[1][-8:] == "diagonal") and (t[2] == 1):
 							print(t[1] + " is killing you")
 							real_threats.append(t)
 					else:
-						if (t[0].Piece.horizontal == True and t[1] == "horizontal"):
+						if (t[0].horizontal == True and t[1] == "horizontal"):
 							print(t[1] + " is killing you")
 							real_threats.append(t)
-						if (t[0].Piece.vertical == True and t[1][-8:] == "vertical"):
+						if (t[0].vertical == True and t[1][-8:] == "vertical"):
 							print(t[1] + " is killing you")
 							real_threats.append(t)
-						if (t[0].Piece.diagonal == True and t[1][-8:] == "diagonal"):
+						if (t[0].diagonal == True and t[1][-8:] == "diagonal"):
 							print(t[1] + " is killing you")
 							real_threats.append(t)
 
@@ -760,40 +711,44 @@ class Piece(ABC):
 	Attributes
 	----------
 	* color: 
-			# the color of the chess piece, 'w' for white, 'b' for black, 'g' for gray
+		the color of the chess piece, 'w' for white, 'b' for black, 'g' for gray
 	* killed:
-			# whether or not the piece is killed
+		whether or not the piece is killed
 	* piece_tag:
-			# what piece the Piece is: king, queen, etc.
+		what piece the Piece is: king, queen, etc.
 
 	Methods
 	-------
 	* color()
-			# returns color of chess piece
-			# sets color to new color
+		returns color of chess piece
+		sets color to new color
 	* set_killed()
-			# sets piece's kill status variable to killed
+		sets piece's kill status variable to killed
 	* get_kill_status()
-			# returns whether or not a piece has been killed
+		returns whether or not a piece has been killed
 	* valid_move()
-			# determines whether a move is valid
+		determines whether a move is valid
+	* possible_moves()
 	"""
 	
 	def __init__(self, color, piece_tag):
-		''' 
+		"""
 		Parameters
 		----------
 		* color: str ('w', 'b', 'g')
-				# the color of the chess piece
+			the color of the chess piece
 		* piece_tag: str 
-				# what kind of piece the piece is
-		'''
+			what kind of piece the piece is
+		Returns
+		-------
+		None
+		"""
 
 		# a piece defaults to killed being false
 		self.killed = False
 
 		self.__color = color
-		self.piece_tag = piece_tag
+		self.__piece_tag = piece_tag
 
 
 
@@ -801,6 +756,10 @@ class Piece(ABC):
 	def color(self):
 		''' Return color of chess piece'''
 		return self.__color
+	@property
+	def piece_tag(self):
+		''' Return the piece tag of the chess piece'''
+		return self.__piece_tag
 
 	def set_killed(self):
 		''' Sets killed variable for that piece to True, meaning it has been killed'''
@@ -810,14 +769,41 @@ class Piece(ABC):
 		''' Returns whether or not a piece has been kiilled'''
 		return self.killed
 
-	#@abstractmethod
+	@abstractmethod
 	def valid_move(self, board: Board, start: Spot, end: Spot) -> bool:
-		''' Abstract method; determines whether or not a move is valid'''
+		''' 
+		Abstract method; determines whether or not a move is valid
+
+		Parameters
+		----------
+		board: Board
+			the Board object we are playing on
+		start: Spot
+			the start Spot
+		end: Spot
+			the end Spot
+
+		Returns
+		-------
+		bool -> True if move is valid, False otherwise
+		'''
 		pass
 
-	def possible_moves(self, board: Board):
-		''' Abstract method; generates a list of all valid Spots for a player. 
-			will be used in determining checkmate'''
+	def possible_moves(self, board: Board) -> list:
+		''' 
+		Generates a list of all valid Spots for a player. Used in determining checkmate
+
+		Parameters
+		----------
+		board: Board
+			the Board object we are playing on
+
+		Returns
+		-------
+		possible_moves: list
+			a list of possible moves
+
+		'''
 		# get the current Spot the piece is at
 		curr_spot = board.get_spot_of_piece(self.color, self.piece_tag)
 		# list to store all the Spots the Piece can currently move to
@@ -835,6 +821,9 @@ class Piece(ABC):
 
 
 class King(Piece):
+	"""
+	A class to represent a King; inherits from Piece
+	"""
 	horizontal = True
 	vertical = True
 	diagonal = True
@@ -875,6 +864,9 @@ class King(Piece):
 			if (pos_change == 12) and (ring_change == 0):
 				return True
 class Pawn(Piece):
+	"""
+	A class to represent a Pawn; inherits from Piece
+	"""
 	horizontal = False
 	vertical = False
 	diagonal = True
@@ -895,7 +887,8 @@ class Pawn(Piece):
 		ring_change = abs(start.ring - end.ring)
 
 		# Pawns can move diagonally as long as they are killing a piece of a different color
-		if (ring_change == 1) and (pos_change == 1) and (end.Piece != None):
+		# pos_change == 1 because diagonal kill could be through center
+		if (ring_change == 1) and (pos_change == 1 or pos_change == 11) and (end.Piece != None):
 			return True
 
 		# in general, Pawns can move one space up (no piece can be there)
@@ -914,6 +907,9 @@ class Pawn(Piece):
 				return True
 
 class Knight(Piece):
+	"""
+	A class to represent a Pawn; inherits from Piece
+	"""
 	horizontal = False
 	vertical = False
 	diagonal = False
@@ -968,6 +964,9 @@ class Knight(Piece):
 
 
 class Rook(Piece):
+	"""
+	A class to represent a Pawn; inherits from Piece
+	"""
 	horizontal = True
 	vertical = True
 	diagonal = False
@@ -996,6 +995,9 @@ class Rook(Piece):
 		return False
 
 class Queen(Piece):
+	"""
+	A class to represent a Pawn; inherits from Piece
+	"""
 	horizontal = True
 	vertical = True
 	diagonal = True
@@ -1053,6 +1055,9 @@ class Queen(Piece):
 
 
 class Bishop(Piece):
+	"""
+	A class to represent a Pawn; inherits from Piece
+	"""
 	horizontal = False
 	vertical = False
 	diagonal = True

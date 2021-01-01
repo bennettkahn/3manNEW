@@ -7,17 +7,58 @@ import playersAndGames as p
 
 
 class Line():
+	"""
+	A class that represents a line
+
+	***
+
+	Attributes
+	----------
+	x_1: int
+		an x coordinate on the line
+	y_1: int
+		a y coordinate on the line
+	slope: float
+		the slope of the line
+
+	Methods
+	-------
+	y_given_x()
+	"""
 	def __init__(self, x_1, y_1, slope):
 		self.x_1 = x_1
 		self.y_1 = y_1
 		self.slope = slope
 
 	def y_given_x(self, x):
-		return -1*(self.slope*(x - self.x_1) - self.y_1)
+		"""
+		Gives the y coordinate associated with a given x
+
+		Parameters
+		----------
+		x: int
+			the x coordinate
+		"""
+		return -1 * (self.slope * (x - self.x_1) - self.y_1)
 	def __str__(self):
 		return 'y = ' + str(self.slope) + '(x - ' + str(self.x_1) + ')' + ' + ' + str(self.y_1)
 
 class Gui:
+	"""
+	A class for our main GUI
+
+	Methods
+	-------
+	load_images()
+	calc_piece_coords()
+	blitRotate()
+	draw()
+	calc_ring()
+	calc_pos()
+	player_move()
+	attempt_move()
+	get_user_input()
+	"""
 	def __init__(self):
 		# our vector which allows us to rotate images about topleft point
 		self.offset = pygame.math.Vector2(19, -19)
