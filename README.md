@@ -2,7 +2,7 @@
 
 * independent, extracurricular project
 
-- This is my biggest personal extracurricular project. After finding out about 3 man chess, buying the [the official board game] (http://3manchess.com), and playing countless games with friends, the next logical step was of course to implement the game in Python. 
+- This is my biggest personal extracurricular project. After finding out about 3 man chess, buying the the official board game (http://3manchess.com), and playing countless games with friends, the next logical step was of course to implement the game in Python. 
 
 
 - **3manNEW** is a "pass n' play" style 3 person chess game modeled after the board game.
